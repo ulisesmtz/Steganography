@@ -15,29 +15,51 @@ import javax.imageio.ImageIO;
  */
 public class Steganography {
 	
+	/**
+	 * Hides the text in an image by grabbing the LSB in image byte and 
+	 * giving it the value of the corresponding bit in text.
+	 * @param bimg the image where the text will be hidden in
+	 * @param text the message to hide
+	 * @param isStoreLength true if hiding length of text, false otherwise
+	 */
+	private static void hideText(byte[] bimg, byte[] text, boolean isStoreLength) {
+		int index = 0; // where to start writing in image
+		
+		if (!isStoreLength) // start at bit 32
+			index = 32;
+		
+		for (int i = 0; i < text.length; i++) {
+			int character = text[i];
+			for (int j = 7; j >= 0; j--) {  // 8 bits per character
+				// get corresponding bit
+				int bit = (character >> j) & 0x1;
+				
+				// new bit is (0 OR bit) since (O OR anything) = anything
+				bimg[index] = (byte) (0x0 | bit);
+				index++;
+			}
+		}
+	}
 	
-	public static void main(String[] args) {
-		Scanner scanner = null;     // retrieve text using scanner
-		BufferedImage bimg = null;  // original image to hide text in
-		BufferedImage newImage = null;  // output of image with text embedded
-		int index = 0; // index at where we will be writing to
-		
-		// **ENCRYPTION**
-		try {
-			scanner = new Scanner(new File("C://Users//UlisesM//Desktop//text.txt"));
-			bimg = ImageIO.read(new File("C://Users//UlisesM//Desktop//flyer+gator6.png"));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException ioe) {
-			ioe.printStackTrace();
-		}
-		
-		// store contents of text in variable message
-		String message = "";
-		while (scanner.hasNextLine()) {
-			message += scanner.nextLine() + "\n";
-		}
-		
+	/**
+	 * Gets the bytes of an image in form of array
+	 * @param bimg the image to get byte array from
+	 * @return byte array of bufferedimage
+	 */
+	private static byte[] getImageBytes(BufferedImage bimg) {
+		WritableRaster raster = bimg.getRaster();
+		DataBufferByte dbb = (DataBufferByte) raster.getDataBuffer();
+		return dbb.getData();
+	}
+	
+	/**
+	 * Encodes a message into an image using the least significant bit (LSB) algorithm
+	 * @param bimg the image used to hide text in
+	 * @param message the text to be hidden
+	 * @return new image with the text embedded in it
+	 */
+	private static BufferedImage encode(BufferedImage bimg, String message) {
+		BufferedImage newImage = null;
 		byte[] messageArray = message.getBytes();
 		
 		// convert message length to byte array (4 bytes)
@@ -54,65 +76,81 @@ public class Steganography {
 		g.drawImage(newImage, 0, 0, null);
 		g.dispose();		
 		
-		
-		// create byte array from bufferedimage
-		WritableRaster raster = newImage.getRaster();
-		DataBufferByte dbb = (DataBufferByte) raster.getDataBuffer();
-		byte[] imageArray = dbb.getData();
-		
-		// store length of message in first 4 bytes of image
-		for (int i = 0; i < messageLengthArray.length; i++) {
-			int character = messageLengthArray[i];
-			for (int j = 7; j >= 0; j--) {  // 8 bits per character
-				// set last bit in image to 0
-				int bit0 = imageArray[index] & 0xFE;
+		byte[] imageArray = getImageBytes(newImage);
+			
+		// hide text in image
+		hideText(imageArray, messageLengthArray, true);
+		hideText(imageArray, messageArray, false);
 				
-				// get corresponding bit
-				int bit = (character >> j) & 1;
-				imageArray[index] = (byte) (bit0 | bit);
-				index++;
-			}
-		}
+		return newImage;
 		
-		// loop through length of message and copy each bit into LSB of each byte in image
-		for (int i = 0; i < messageArray.length; i++) {
-			int character = messageArray[i];
-			for (int j = 7; j >= 0; j--) {  // 8 bits per character
-				// set last bit in image to 0
-				int bit0 = imageArray[index] & 0xFE;
-				
-				// get corresponding bit
-				int bit = (character >> j) & 1;
-				imageArray[index] = (byte) (bit0 | bit);
-				index++;
-			}
-		}
+	}
+	
+	/**
+	 * Gets the hidden text from an image using LSB algorithm
+	 * @param bimg the image with the hidden text inside
+	 * @return the hidden text
+	 */
+	private static String decode(BufferedImage bimg) {
+		byte[] imageArray = getImageBytes(bimg);
 		
-		// **DECRYPTION**
+		int length = 0;
 		
-		// loop through first 4 bytes of image to get length of message
-		int length = 0; 
+		// get length stored in first 4 bytes of image
 		for (int i = 0; i < 32; ++i) {
 			length = (length << 1) | (imageArray[i] & 1);
 		}
 		
 		byte[] result = new byte[length];
-		int index2 = 32; // skip first 4 bytes for length of message
+		int index = 32; // skip first 4 bytes for length of message
 
 		// loop til length of message and grab each LSB from image
 		for (int i = 0; i < result.length; i++) {
 			for (int j = 0; j < 8; j++) { // each bit
 				// shift by 1 and grab last bit of next image byte
-				result[i] = (byte) ((result[i] << 1) | (imageArray[index2] & 1));
-				index2++;
+				result[i] = (byte) ((result[i] << 1) | (imageArray[index] & 1));
+				index++;
 			}
 		}
 		
-		// test
-		for (byte a : result) {
-			System.out.print((char)a);
+		// convert to string
+		String message = "";
+		for (byte b : result) {
+			message += (char) b;
 		}
 		
+		return message;
+		
+	}
+	
+	
+	public static void main(String[] args) {
+		
+		BufferedImage bimg = null;  // original image to hide text in
+		BufferedImage newImage = null;  // output of image with text embedded
+		Scanner scanner = null;     // retrieve text using scanner
+		
+		try {
+			scanner = new Scanner(new File("C://Users//UlisesM//Desktop//text.txt"));
+			bimg = ImageIO.read(new File("C://Users//UlisesM//Desktop//flyer+gator6.png"));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+				
+		String message = "";
+		
+		// store contents of text in variable message
+		while (scanner.hasNextLine()) {
+			message += scanner.nextLine() + "\n";
+		}
+		
+		newImage = encode(bimg, message);
+	
+		String msg = decode(newImage);
+		
+		System.out.println(msg); // test
 		
 	}
 
