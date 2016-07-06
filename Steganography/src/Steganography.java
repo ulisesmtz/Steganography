@@ -1,10 +1,17 @@
+import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.awt.image.WritableRaster;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Scanner;
 
 import javax.imageio.ImageIO;
@@ -19,23 +26,23 @@ public class Steganography {
 	 * Hides the text in an image by grabbing the LSB in image byte and 
 	 * giving it the value of the corresponding bit in text.
 	 * @param bimg the image where the text will be hidden in
-	 * @param text the message to hide
+	 * @param bytes the message/image to hide
 	 * @param isStoreLength true if hiding length of text, false otherwise
 	 */
-	private static void hideText(byte[] bimg, byte[] text, boolean isStoreLength) {
+	private static void hideText(byte[] bimg, byte[] bytes, boolean isStoreLength) {
 		int index = 0; // where to start writing in image
 		
 		if (!isStoreLength) // start at bit 32
 			index = 32;
 		
-		for (int i = 0; i < text.length; i++) {
-			int character = text[i];
+		for (int i = 0; i < bytes.length; i++) {
+			int character = bytes[i];
 			for (int j = 7; j >= 0; j--) {  // 8 bits per character
 				// get corresponding bit
-				int bit = (character >> j) & 0x1;
+				int bit = (character >> j) & 1;
 				
-				// new bit is (0 OR bit) since (O OR anything) = anything
-				bimg[index] = (byte) (0x0 | bit);
+				// get last image byte, set last bit to 0 ( AND 0xFE) then OR with bit
+				bimg[index] = (byte) ((bimg[index] & 0xFE) | bit);
 				index++;
 			}
 		}
@@ -55,32 +62,32 @@ public class Steganography {
 	/**
 	 * Encodes a message into an image using the least significant bit (LSB) algorithm
 	 * @param bimg the image used to hide text in
-	 * @param message the text to be hidden
-	 * @return new image with the text embedded in it
+	 * @param bytes the bytes to be hidden
+	 * @return new image with the bytes embedded in it
 	 */
-	private static BufferedImage encode(BufferedImage bimg, String message) {
+	private static BufferedImage encode(BufferedImage bimg, byte[] bytes) {
 		BufferedImage newImage = null;
-		byte[] messageArray = message.getBytes();
+	//	byte[] messageArray = message.getBytes();
 		
-		// convert message length to byte array (4 bytes)
-		byte[] messageLengthArray = new byte[4]; // will hold length of message in bytes
-		messageLengthArray[0] = (byte)((message.length() & 0xFF000000) >> 24);
-		messageLengthArray[1] = (byte)((message.length() & 0x00FF0000) >> 16);
-		messageLengthArray[2] = (byte)((message.length() & 0x0000FF00) >> 8);
-		messageLengthArray[3] = (byte) (message.length() & 0x000000FF);
+		// convert length to byte array (4 bytes)
+		byte[] messageLengthArray = new byte[4]; // will hold length of bytes in bytes arrray
+		messageLengthArray[0] = (byte)((bytes.length & 0xFF000000) >> 24);
+		messageLengthArray[1] = (byte)((bytes.length & 0x00FF0000) >> 16);
+		messageLengthArray[2] = (byte)((bytes.length & 0x0000FF00) >> 8);
+		messageLengthArray[3] = (byte) (bytes.length & 0x000000FF);
 
 		
 		// copy original image to new image using graphics
 		newImage = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-		Graphics g = bimg.createGraphics();
-		g.drawImage(newImage, 0, 0, null);
+		Graphics g = newImage.createGraphics();
+		g.drawImage(bimg, 0, 0, null);
 		g.dispose();		
-		
+	
 		byte[] imageArray = getImageBytes(newImage);
 			
-		// hide text in image
+		// hide bytes in image
 		hideText(imageArray, messageLengthArray, true);
-		hideText(imageArray, messageArray, false);
+		hideText(imageArray, bytes, false);
 				
 		return newImage;
 		
@@ -89,9 +96,9 @@ public class Steganography {
 	/**
 	 * Gets the hidden text from an image using LSB algorithm
 	 * @param bimg the image with the hidden text inside
-	 * @return the hidden text
+	 * @return the hidden bytes
 	 */
-	private static String decode(BufferedImage bimg) {
+	private static byte[] decode(BufferedImage bimg) {
 		byte[] imageArray = getImageBytes(bimg);
 		
 		int length = 0;
@@ -113,44 +120,106 @@ public class Steganography {
 			}
 		}
 		
-		// convert to string
-		String message = "";
-		for (byte b : result) {
-			message += (char) b;
-		}
-		
-		return message;
+		return result;
 		
 	}
 	
 	
 	public static void main(String[] args) {
-		
-		BufferedImage bimg = null;  // original image to hide text in
-		BufferedImage newImage = null;  // output of image with text embedded
-		Scanner scanner = null;     // retrieve text using scanner
-		
+//		
+//		BufferedImage bimg = null;  // original image to hide text in
+//		BufferedImage newImage = null;  // output of image with text embedded
+//		Scanner scanner = null;     // retrieve text using scanner
+//		
+//		try {
+//			scanner = new Scanner(new File("C://Users//UlisesM//Desktop//text.txt"));
+//			bimg = ImageIO.read(new File("C://Users//UlisesM//Desktop//flyer+gator6.png"));
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//				
+//		String message = "";
+//		
+//		// store contents of text in variable message
+//		while (scanner.hasNextLine()) {
+//			message += scanner.nextLine() + "\n";
+//		}
+//		
+//		newImage = encode(bimg, message);
+//	
+//		String msg = decode(newImage);
+//		
+//		//System.out.println(msg); // test
+//		
+		BufferedImage b = null;
 		try {
-			scanner = new Scanner(new File("C://Users//UlisesM//Desktop//text.txt"));
-			bimg = ImageIO.read(new File("C://Users//UlisesM//Desktop//flyer+gator6.png"));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+			  b = ImageIO.read(new File("C://Users//UlisesM//Desktop//small.png"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-				
-		String message = "";
 		
-		// store contents of text in variable message
-		while (scanner.hasNextLine()) {
-			message += scanner.nextLine() + "\n";
+		
+		BufferedImage coverImage = null, secretImage = null;
+		try {
+			BufferedImage coverImage2 = ImageIO.read(new File("C://Users//UlisesM//Desktop//flyer+gator6.png"));
+			BufferedImage secretImage2 = ImageIO.read(new File("C://Users//UlisesM//Desktop//small2.png"));
+			coverImage = new BufferedImage(coverImage2.getWidth(), coverImage2.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+			Graphics g = coverImage.createGraphics();
+			g.drawImage(coverImage2, 0, 0, null);
+			g.dispose();
+			
+			secretImage = new BufferedImage(secretImage2.getWidth(), secretImage2.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+			Graphics g2 = secretImage.createGraphics();
+			g2.drawImage(secretImage2, 0, 0, null);
+			g2.dispose();
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
 		}
 		
-		newImage = encode(bimg, message);
-	
-		String msg = decode(newImage);
+		// test normal message
+		BufferedImage b = encode(coverImage, "Hello\nThis is a \nMesdfhdfhdhfgdshjfgshjfgdshg fsdjgfhdsgfdsfdssdfkjrthrbrhfbgehgvefhdjfbdssdsdsad\ngfgdfgsdasafe form ".getBytes());
+		byte[] c = decode(b);
+		for (byte x : c) System.out.print((char)x);
 		
-		System.out.println(msg); // test
+		//**********************************
+		// test images
+		BufferedImage result = encode(coverImage, getImageBytes(secretImage));
+		try {
+			ImageIO.write(result, "png", new File("C://Users//UlisesM//Desktop//new.png"));
+			ImageIO.write(b, "png", new File("C://Users//UlisesM//Desktop//b.png"));
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		System.out.println("\n----");
+		
+		
+		byte[] pp = decode(result);
+		
+		// swap blue with red
+		for (int i=0;i<pp.length;i+=3) {
+			byte temp = pp[i];
+			pp[i] = pp[i+2];
+			pp[i+2] = temp;
+		}
+		
+		
+		BufferedImage k = new BufferedImage(secretImage.getWidth(), secretImage.getHeight(), secretImage.getType());
+		WritableRaster raster = k.getRaster();
+		raster.setDataElements(0, 0, secretImage.getWidth(), secretImage.getHeight(), pp);
+		System.out.println("+-+-+-+-+");
+		try {
+			ImageIO.write(k, "png", new File("C://Users//UlisesM//Desktop//newimage.png"));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+
 		
 	}
 
