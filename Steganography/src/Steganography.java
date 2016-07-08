@@ -64,23 +64,29 @@ public class Steganography {
 	}
 	
 	/**
+	 * Gets the bytes of an integer and stores them in a byte array
+	 * @param size the size of the byte array
+	 * @param number which integer to convert to bytes
+	 * @return byte array with number in bytes
+	 */
+	private byte[] getBytesFromInt(int size, int number) {
+		byte[] b = new byte[size];
+		
+		for (int i = size-1, shift = 0; i >= 0; i--, shift += 8) 
+			b[i] = (byte) ((number & (0x000000FF << shift)) >> shift);
+		
+		return b;
+	}
+	
+	/**
 	 * Encodes bytes into an image using the least significant bit (LSB) algorithm
 	 * @param bimg the image used to hide text in
 	 * @param message the text to be hidden
 	 * @return new image with the text embedded in it
 	 */
 	private BufferedImage encodeText(BufferedImage bimg, String message) {
-		
 		byte[] bytes = message.getBytes();
-		
-		// convert length to byte array (4 bytes)
-		byte[] messageLengthArray = new byte[4]; // will hold length of bytes in bytes array
-		messageLengthArray[0] = (byte)((bytes.length & 0xFF000000) >> 24);
-		messageLengthArray[1] = (byte)((bytes.length & 0x00FF0000) >> 16);
-		messageLengthArray[2] = (byte)((bytes.length & 0x0000FF00) >> 8);
-		messageLengthArray[3] = (byte) (bytes.length & 0x000000FF);
-
-		
+		byte[] messageLengthArray = getBytesFromInt(MESSAGE_LENGTH_BITS/8, bytes.length); // 8 bits per byte
 		byte[] imageArray = getImageBytes(bimg);
 		
 		// hide bytes in image
@@ -88,7 +94,6 @@ public class Steganography {
 		hideBytes(imageArray, bytes, MESSAGE_LENGTH_BITS);
 				
 		return bimg;
-		
 	}
 
 	/**
@@ -100,24 +105,12 @@ public class Steganography {
 	private BufferedImage encodeImage(BufferedImage cover, BufferedImage secret) {
 		int height = secret.getHeight();
 		int width = secret.getWidth();
-		
-		// store width as byte (2) array
-		byte[] widthArray = new byte[2];
-		widthArray[0] = (byte)((width & 0x0000FF00) >> 8);
-		widthArray[1] = (byte) (width & 0x000000FF);
-		
-		// same thing for height...
-		byte[] heightArray = new byte[2];
-		heightArray[0] = (byte)((height & 0x0000FF00) >> 8);
-		heightArray[1] = (byte) (height & 0x000000FF);
-		
 		byte[] bytes = getImageBytes(secret);
-		byte[] messageLengthArray = new byte[4]; // will hold length of bytes in bytes array
-		// same procedure
-		messageLengthArray[0] = (byte)((bytes.length & 0xFF000000) >> 24);
-		messageLengthArray[1] = (byte)((bytes.length & 0x00FF0000) >> 16);
-		messageLengthArray[2] = (byte)((bytes.length & 0x0000FF00) >> 8);
-		messageLengthArray[3] = (byte) (bytes.length & 0x000000FF);
+
+		// get byte array for width, height, and message (8 bytes = 1 bit)
+		byte[] widthArray = getBytesFromInt(WIDTH_BITS/8, width);
+		byte[] heightArray = getBytesFromInt(HEIGHT_BITS/8, height);
+		byte[] messageLengthArray = getBytesFromInt(MESSAGE_LENGTH_BITS/8, bytes.length);
 		
 		byte[] imageArray = getImageBytes(cover);
 		
@@ -128,7 +121,6 @@ public class Steganography {
 		hideBytes(imageArray, bytes, MESSAGE_LENGTH_BITS + WIDTH_BITS + HEIGHT_BITS);
 		
 		return cover;
-
 	}
 	
 	/**
