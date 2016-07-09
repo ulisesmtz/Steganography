@@ -3,6 +3,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.awt.image.WritableRaster;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Scanner;
 
@@ -79,12 +80,35 @@ public class Steganography {
 	}
 	
 	/**
+	 * Reads the content of a file and returns it in a String
+	 * @param file the .txt file to be read
+	 * @return contents of .txt file in String
+	 */
+	public String getText(File file) {
+		Scanner scanner = null;
+		String text = "";
+		try {
+			scanner = new Scanner(file);
+			
+			while (scanner.hasNextLine()) 
+				text += scanner.nextLine() + "\n"; // add new line char to at end of every line
+			
+		} catch (FileNotFoundException e) {
+			System.err.println("Could not find file " + file);
+		} finally {
+			scanner.close();
+		}
+		
+		return text;
+	}
+	
+	/**
 	 * Encodes bytes into an image using the least significant bit (LSB) algorithm
 	 * @param bimg the image used to hide text in
 	 * @param message the text to be hidden
 	 * @return new image with the text embedded in it
 	 */
-	private BufferedImage encodeText(BufferedImage bimg, String message) {
+	public BufferedImage encodeText(BufferedImage bimg, String message) {
 		byte[] bytes = message.getBytes();
 		byte[] messageLengthArray = getBytesFromInt(MESSAGE_LENGTH_BITS/8, bytes.length); // 8 bits per byte
 		byte[] imageArray = getImageBytes(bimg);
@@ -102,7 +126,7 @@ public class Steganography {
 	 * @param secret the bufferedimage to be hidden
 	 * @return new bufferedimage with contents of secret image embedded in cover image
 	 */
-	private BufferedImage encodeImage(BufferedImage cover, BufferedImage secret) {
+	public BufferedImage encodeImage(BufferedImage cover, BufferedImage secret) {
 		int height = secret.getHeight();
 		int width = secret.getWidth();
 		byte[] bytes = getImageBytes(secret);
@@ -128,7 +152,7 @@ public class Steganography {
 	 * @param bimg the bufferedimage with hidden image inside
 	 * @return bufferedimage that was encoded in bimg
 	 */
-	private BufferedImage decodeImage(BufferedImage bimg) {
+	public BufferedImage decodeImage(BufferedImage bimg) {
 		byte[] imageArray = getImageBytes(bimg);
 		int length = 0, height = 0, width = 0;
 		
@@ -176,7 +200,7 @@ public class Steganography {
 	 * @param bimg the image with the hidden text inside
 	 * @return the hidden text
 	 */
-	private String decodeText(BufferedImage bimg) {
+	public String decodeText(BufferedImage bimg) {
 		byte[] imageArray = getImageBytes(bimg);
 		
 		int length = 0;
@@ -215,11 +239,7 @@ public class Steganography {
 			
 			// try encoding text in image
 			File txtFile = new File("text.txt");
-			Scanner sc = new Scanner(txtFile);
-			String message = "";
-			while (sc.hasNextLine())
-				message += sc.nextLine() + "\n";
-			sc.close();
+			String message = stega.getText(txtFile);
 			BufferedImage encodedText = stega.encodeText(original, message);
 			ImageIO.write(encodedText,"png", new File("encodedText.png"));
 			System.out.println("-> Finished encoding text into image!");
