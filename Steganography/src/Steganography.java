@@ -10,6 +10,10 @@ import java.util.Scanner;
 import javax.imageio.ImageIO;
 
 /**
+ * Performs steganography (hiding info within other data) in one of two ways: text within an image
+ * or image within another image. Regardless, the algorithm for doing so is called the least 
+ * significant bit (LSB). It takes the LSB of each pixel from an image and changes it to the corresponding 
+ * bit of the text or image that is trying to be encoded. 
  * @author UlisesM
  *
  */
@@ -22,7 +26,7 @@ public class Steganography {
 	
 	/**Converts an image to 3 bytes of blue, green, red each, respectively
 	 * @param bimg the bufferedimage to be converted to
-	 * @return new bufferedimage with color scheme desired
+	 * @return new bufferedimage with color scheme (BGR) desired
 	 */
 	private BufferedImage convertToBGR(BufferedImage bimg) {
 		BufferedImage newImage = new BufferedImage(bimg.getWidth(), bimg.getHeight(), BufferedImage.TYPE_3BYTE_BGR);

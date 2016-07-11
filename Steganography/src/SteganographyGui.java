@@ -26,7 +26,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 /**
- *
+ * Provides a graphical user interface (GUI) for steganography. User can click what they would 
+ * want to do (either decode an image from an image, decode text from an image, encode text into 
+ * an image or encode an image into another image). User then chooses the PNG image(s) and/or text
+ * and then the encoding or decoding process begins.
  * @author UlisesM
  */
 public class SteganographyGui extends JFrame implements ActionListener {
@@ -194,12 +197,12 @@ public class SteganographyGui extends JFrame implements ActionListener {
 		if (result == JFileChooser.APPROVE_OPTION) {
 			File file = jfc.getSelectedFile();
 			if (!isText) {
-				if (!file.toString().equals(".png")) // if user didn't add extension, add extension
+				if (!file.toString().endsWith(".png")) // if user didn't add extension, add extension
 					file = new File(file.toString() + ".png");
 				
 				ImageIO.write(bimg, "png", file);
 			} else {  // txt file
-				if (!file.toString().equals(".txt")) // if user didn't add extension, add extension
+				if (!file.toString().endsWith(".txt")) // if user didn't add extension, add extension
 					file = new File(file.toString() + ".txt");
 				
 				// write to file
