@@ -262,6 +262,10 @@ public class Steganography {
 			System.out.println("-> Finished decoding image in image!");
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
+		} catch (ArrayIndexOutOfBoundsException a) {
+			a.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		
 		

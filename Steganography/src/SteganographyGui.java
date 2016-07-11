@@ -216,60 +216,76 @@ public class SteganographyGui extends JFrame implements ActionListener {
      * action to perform (i.e. encode text, decode image, etc)
      * @throws IOException
      */
-    private void performAction(String action) throws IOException{
+    private void performAction(String action){
     	File file1 = new File(coverTextField.getText());
 		File file2 = new File(secretTextField.getText());
 
     	if (!file1.exists()) {
-    		showErrorMessage("Cover image does not exist");
+    		showErrorMessage("Cover image does not exist.");
     		return; 
     	}
     	
-    	if (action.equals(ENCODE_IMAGE)) { // encoding an image within an image
-    		
-    		// check if second file is actually an image (.png) and exists
-			if (!secretTextField.getText().endsWith(".png")) {
-				showErrorMessage("Second file must be png image");
+    	try {
+    	
+	    	if (action.equals(ENCODE_IMAGE)) { // encoding an image within an image
+	    		
+	    		// check if second file is actually an image (.png) and exists
+				if (!secretTextField.getText().endsWith(".png")) {
+					showErrorMessage("Second file must be png image.");
+					return;
+				}
+							
+				if (!file2.exists()) {
+					showErrorMessage("Secret image does not exist.");
+		    		return; 
+				}
+				
+				BufferedImage bimg = stega.encodeImage(ImageIO.read(file1), ImageIO.read(file2));
+				saveFile(bimg, false, null);
+				
+			} else if (action.equals(ENCODE_TEXT)) { // encoding text within image
+				
+				// check second file is .txt file and exists
+				if (!secretTextField.getText().endsWith(".txt")) {
+					showErrorMessage("Second file must be txt file.");
+					return;
+				}
+							
+				if (!file2.exists()) {
+					showErrorMessage("Txt file does not exist.");
+		    		return; 
+				}
+				
+				String text = stega.getText(file2);
+				BufferedImage bimg = stega.encodeText(ImageIO.read(file1), text);
+				saveFile(bimg, false, null);
+				
+			} else if (action.equals(DECODE_IMAGE)) { // decode image from image
+				BufferedImage bimg = stega.decodeImage(ImageIO.read(file1));
+				saveFile(bimg, false, null);
+				
+			} else if (action.equals(DECODE_TEXT)) { // decode text from image
+				String message = stega.decodeText(ImageIO.read(file1));
+				saveFile(null, true, message);
+				
+			} else {
+				System.err.println("Unknown option selected");
 				return;
 			}
-						
-			if (!file2.exists()) {
-				showErrorMessage("Secret image does not exist");
-	    		return; 
-			}
-			
-			BufferedImage bimg = stega.encodeImage(ImageIO.read(file1), ImageIO.read(file2));
-			saveFile(bimg, false, null);
-			
-		} else if (action.equals(ENCODE_TEXT)) { // encoding text within image
-			
-			// check second file is .txt file and exists
-			if (!secretTextField.getText().endsWith(".txt")) {
-				showErrorMessage("Second file must be txt file");
-				return;
-			}
-						
-			if (!file2.exists()) {
-				showErrorMessage("Txt file does not exist");
-	    		return; 
-			}
-			
-			String text = stega.getText(file2);
-			BufferedImage bimg = stega.encodeText(ImageIO.read(file1), text);
-			saveFile(bimg, false, null);
-			
-		} else if (action.equals(DECODE_IMAGE)) { // decode image from image
-			BufferedImage bimg = stega.decodeImage(ImageIO.read(file1));
-			saveFile(bimg, false, null);
-			
-		} else if (action.equals(DECODE_TEXT)) { // decode text from image
-			String message = stega.decodeText(ImageIO.read(file1));
-			saveFile(null, true, message);
-			
-		} else {
-			System.err.println("Unknown option selected");
-			return;
-		}
+    	} catch (IOException ioe) {
+    		showErrorMessage("There was an error while reading/writing a file.");
+    	} catch (ArrayIndexOutOfBoundsException aie) {
+    		// trying to encode something and it does not fit
+    		showErrorMessage("Cover image is too small. Choose a larger one.");
+    	} catch (OutOfMemoryError oome) { 
+    		/*
+    		 *  In case user tries to decode and there is nothing to decode and program creates
+    		 *  an array too big to handle
+    		 */
+    		showErrorMessage("There is no secret inside this cover image.");
+    	} catch (Exception e) {
+    		showErrorMessage("There is no secret inside this cover image.");
+    	}
     }
     
     /**
@@ -366,11 +382,7 @@ public class SteganographyGui extends JFrame implements ActionListener {
 		} else if (command.equals(FILE2)) {
 			getFile(true);
 		} else if (command.equals(SUBMIT)) {
-			try {
-				performAction(getSelectedRadioButton(buttonGroup));
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
+			performAction(getSelectedRadioButton(buttonGroup));
 		} else {
 			System.err.println("Unknown command.");
 		}
