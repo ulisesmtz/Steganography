@@ -102,6 +102,7 @@ public class Steganography {
 		return text;
 	}
 	
+	
 	/**
 	 * Encodes bytes into an image using the least significant bit (LSB) algorithm
 	 * @param bimg the image used to hide text in
