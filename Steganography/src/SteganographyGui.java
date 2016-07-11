@@ -52,6 +52,7 @@ public class SteganographyGui extends JFrame implements ActionListener {
     private final String FILE2 = "FILE2";
     private final String SUBMIT = "SUBMIT";
     
+    // text of radio buttons
     private final String ENCODE_IMAGE = "Encode image";
     private final String ENCODE_TEXT = "Encode text";
     private final String DECODE_IMAGE = "Decode image";
@@ -171,52 +172,83 @@ public class SteganographyGui extends JFrame implements ActionListener {
     	JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE, null);
     }
     
-    private void saveImage(BufferedImage bimg) throws IOException {
+    /** Allows the user to save png or txt file 
+     * @param bimg Bufferedimage to save (if there is one)
+     * @param isText true if saving a txt file, false otherwise
+     * @param message the text to save to a file (if there is one)
+     * @throws IOException
+     */
+    private void saveFile(BufferedImage bimg, boolean isText, String message) throws IOException {
     	JFileChooser jfc = new JFileChooser();
-		FileNameExtensionFilter filter = new FileNameExtensionFilter("PNG", "png");
+    	FileNameExtensionFilter filter;
+    	
+    	// set appropriate filter
+		 if (!isText) 
+			 filter = new FileNameExtensionFilter("PNG", "png");
+		 else
+			 filter = new FileNameExtensionFilter("TXT", "txt");
+		 
 		jfc.setFileFilter(filter);
 		jfc.setAcceptAllFileFilterUsed(false);
 		int result = jfc.showSaveDialog(this);
 		if (result == JFileChooser.APPROVE_OPTION) {
-			File f = jfc.getSelectedFile();
-			f = new File(f.toString() + ".png");
-			ImageIO.write(bimg, "png", f);
+			File file = jfc.getSelectedFile();
+			if (!isText) {
+				if (!file.toString().equals(".png")) // if user didn't add extension, add extension
+					file = new File(file.toString() + ".png");
+				
+				ImageIO.write(bimg, "png", file);
+			} else {  // txt file
+				if (!file.toString().equals(".txt")) // if user didn't add extension, add extension
+					file = new File(file.toString() + ".txt");
+				
+				// write to file
+				BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+				writer.write(message);
+				writer.close();
+			}
 		}
     }
     
+    /**
+     * Encoding/decoding process begins here. 
+     * @param action the text of the radio button which is selected that will say which 
+     * action to perform (i.e. encode text, decode image, etc)
+     * @throws IOException
+     */
     private void performAction(String action) throws IOException{
     	File file1 = new File(coverTextField.getText());
-    	
+		File file2 = new File(secretTextField.getText());
+
     	if (!file1.exists()) {
     		showErrorMessage("Cover image does not exist");
     		return; 
     	}
     	
-    	if (action.equals(ENCODE_IMAGE)) {
+    	if (action.equals(ENCODE_IMAGE)) { // encoding an image within an image
     		
+    		// check if second file is actually an image (.png) and exists
 			if (!secretTextField.getText().endsWith(".png")) {
 				showErrorMessage("Second file must be png image");
 				return;
 			}
-			
-			File file2 = new File(secretTextField.getText());
-			
+						
 			if (!file2.exists()) {
 				showErrorMessage("Secret image does not exist");
 	    		return; 
 			}
 			
 			BufferedImage bimg = stega.encodeImage(ImageIO.read(file1), ImageIO.read(file2));
-			saveImage(bimg);
+			saveFile(bimg, false, null);
 			
-		} else if (action.equals(ENCODE_TEXT)) {
+		} else if (action.equals(ENCODE_TEXT)) { // encoding text within image
+			
+			// check second file is .txt file and exists
 			if (!secretTextField.getText().endsWith(".txt")) {
 				showErrorMessage("Second file must be txt file");
 				return;
 			}
-			
-			File file2 = new File(secretTextField.getText());
-			
+						
 			if (!file2.exists()) {
 				showErrorMessage("Txt file does not exist");
 	    		return; 
@@ -224,27 +256,19 @@ public class SteganographyGui extends JFrame implements ActionListener {
 			
 			String text = stega.getText(file2);
 			BufferedImage bimg = stega.encodeText(ImageIO.read(file1), text);
-			saveImage(bimg);
+			saveFile(bimg, false, null);
 			
-		} else if (action.equals(DECODE_IMAGE)) {
+		} else if (action.equals(DECODE_IMAGE)) { // decode image from image
 			BufferedImage bimg = stega.decodeImage(ImageIO.read(file1));
-			saveImage(bimg);
-		} else if (action.equals(DECODE_TEXT)) {
+			saveFile(bimg, false, null);
+			
+		} else if (action.equals(DECODE_TEXT)) { // decode text from image
 			String message = stega.decodeText(ImageIO.read(file1));
-			JFileChooser jfc = new JFileChooser();
-			FileNameExtensionFilter filter = new FileNameExtensionFilter("TXT", "txt");
-			jfc.setFileFilter(filter);
-			jfc.setAcceptAllFileFilterUsed(false);
-			int result = jfc.showSaveDialog(this);
-			if (result == JFileChooser.APPROVE_OPTION) {
-				File f = jfc.getSelectedFile();
-				f = new File(f.toString() + ".txt");
-				BufferedWriter writer = new BufferedWriter(new FileWriter(f));
-				writer.write(message);
-				writer.close();
-			}
+			saveFile(null, true, message);
+			
 		} else {
 			System.err.println("Unknown option selected");
+			return;
 		}
     }
     
@@ -321,6 +345,14 @@ public class SteganographyGui extends JFrame implements ActionListener {
                
     @Override
 	public void actionPerformed(ActionEvent e) {
+    	/*
+    	 * List of action command and what to do
+    	 * "OFF"    -> unenable the second button and text field (won't be needing it since we're decoding)
+    	 * "ON"     -> opposite of "OFF", enable same components mentioned
+    	 * "FILE1"  -> get user file and set path in first text field
+    	 * "FILE2"  -> similar to "FILE1", but set path in second text field
+    	 * "SUBMIT" -> start the decode/encode process 
+    	 */
 		String command = e.getActionCommand();
 		
 		if (command.equals(OFF)) {
